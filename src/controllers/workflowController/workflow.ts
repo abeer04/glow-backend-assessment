@@ -1,78 +1,36 @@
-(request: Request, response: Response) => {
-  const { fein } = request.params;
-  const { industry, contact, status } = request.body;
+import { Request, Response } from "express";
+import { businesses } from "../../app";
+import { WorkflowStagesEnum } from "./types";
+import {
+  pregressBusinessFromMarketApproved,
+  progressBusinessFromNew,
+  progressFromSalesApproved,
+} from "./utils";
+import { validateFein } from "../businessController/utils";
+
+export const progressBusiness = (req: Request, res: Response) => {
+  const { fein, industry, contact, status } = req.body;
+
+  const notValidResponse = validateFein(res, fein);
+  if (notValidResponse) return notValidResponse;
+
   const business = businesses[fein];
 
   if (!business) {
-    return response.status(404).json({ errorMessage: "Business not found." });
+    return res.status(404).json({ errorMessage: "Business not found" });
   }
 
-  switch (business.currentStage) {
+  switch (business.stage) {
     case WorkflowStagesEnum.NEW:
-      if (!industry) {
-        return response
-          .status(400)
-          .json({ errorMessage: "Industry is required to progress." });
-      }
+      return progressBusinessFromNew(res, industry, business);
 
-      if (!Object.values(IndustryEnum).includes(industry)) {
-        return response.status(400).json({
-          errorMessage: `Target industry must be one of: ${Object.values(
-            IndustryEnum
-          ).join(", ")}.`,
-        });
-      }
-
-      if ([IndustryEnum.RESTAURANTS, IndustryEnum.STORES].includes(industry)) {
-        business.industry = industry;
-        business.currentStage = WorkflowStagesEnum.MARKET_APPROVED;
-
-        return response.json({
-          business,
-          nextStep: "Provide contact information to progress.",
-        });
-      } else {
-        business.currentStage = WorkflowStagesEnum.MARKET_DECLINED;
-
-        return response.json({ business });
-      }
     case WorkflowStagesEnum.MARKET_APPROVED:
-      if (!contact) {
-        return response.status(400).json({
-          errorMessage: "Contact is required.",
-        });
-      }
+      return pregressBusinessFromMarketApproved(res, contact, business);
 
-      if (!(contact.name && contact.phone)) {
-        return response.status(400).json({
-          errorMessage: "Valid contact comprises name and phone.",
-        });
-      }
-
-      business.contact = contact;
-      business.currentStage = WorkflowStagesEnum.SALES_APPROVED;
-
-      return response.json({
-        business,
-        nextStep: "Choose Won or Lost to complete the workflow.",
-      });
     case WorkflowStagesEnum.SALES_APPROVED:
-      if (
-        !status ||
-        (status !== WorkflowStagesEnum.WON &&
-          status !== WorkflowStagesEnum.LOST)
-      ) {
-        return response
-          .status(400)
-          .json({ errorMessage: "Status must be either 'Won' or 'Lost'." });
-      }
+      return progressFromSalesApproved(res, status, business);
 
-      business.currentStage = status;
-
-      return response.json({ business });
     default:
-      return response
-        .status(400)
-        .json({ errorMessage: "No further progression possible." });
+      return res.status(400).json({ errorMessage: "Invalid Workflow stage" });
   }
 };

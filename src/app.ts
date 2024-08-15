@@ -1,11 +1,16 @@
-import bodyParser from "body-parser";
 import express from "express";
 
 export const app = express();
-app.use(bodyParser.json());
 
-import * as business from "./routes/buninessRoutes";
-import * as workflow from "./routes/workflowRoutes";
+app.use(express.json());
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
+
+import businessRoutes from "./routes/buninessRoutes";
+import workflowRoutes from "./routes/workflowRoutes";
 import { Business } from "./controllers/businessController/types";
 
 type Businesses = {
@@ -14,5 +19,5 @@ type Businesses = {
 
 export const businesses: Businesses = {};
 
-app.use("/api/business", business);
-app.use("/api/workflow", workflow);
+app.use("/api/business", businessRoutes);
+app.use("/api/workflow", workflowRoutes);

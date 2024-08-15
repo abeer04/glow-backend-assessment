@@ -1,7 +1,8 @@
 import express from "express";
+import { progressBusiness } from "../controllers/workflowController/workflow";
 
 export const router = express.Router();
 
-router.route("/progress-business").post((req, res) => {
-  const { fein, name } = req.body;
-});
+router.route("/progress-business").post(progressBusiness);
+
+export default router;
